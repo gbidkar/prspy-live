@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>PRSpyLive</title>
+    <link href="https://fonts.googleapis.com/css?family=ZCOOL+QingKe+HuangYou" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css"
+        integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            background-color: darkolivegreen;
+        }
+
+        .text-holder {
+            width: 100%;
+            height: 100%;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .middle-text {
+            font-family: 'ZCOOL QingKe HuangYou', cursive;
+            font-size: 200px;
+            text-align: center;
+            text-shadow: 4px 4px #ffffff;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .serv-status {
+            font-size: 20px;
+            font-family: 'Roboto', sans-serif;
+            margin: 5px;
+            position: fixed;
+            top: 0;
+            color: white;
+            text-shadow: 2px 2px black;
+        }
+
+        .websocket-ping-list {
+            font-size: 12px;
+            font-family: 'Roboto', sans-serif;
+            margin: 5px;
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            color: lightblue;
+            list-style-type: none;
+        }
+
+        .websocket-ping-element {
+            animation: fadeout 1.5s linear forwards;
+        }
+
+        .websocket-ping-element:hover {
+            color: red;
+        }
+        
+        @keyframes fadeout {
+            0% {
+                opacity: 1;
+            }
+            70% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 0;
+                visibility: hidden;
+            }
+        }
+
+        .warn {
+            font-size: 25px;
+            color: #ffed00;
+            background-color: black;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="text-holder">
+        <div id="go" class="middle-text serv-ok hidden">
+            <div>GO!</div>
+            <i class="fa fa-check"></i>
+        </div>
+        <div id="wait" class="middle-text serv-wait hidden">
+            <div>Wait...</div>
+            <i class="far fa-hand-paper"></i>
+        </div>
+    </div>
+    <div id="status-text" class="serv-status">
+        <span id="name">N/A</span> | @ <span id="map">N/A</span> | <span id="players">N/A</span>/<span id="max">N/A</span> <br />
+        Timeout: <span id="timeout">N/A</span> <br />
+        <span id="warn-timedout" class="warn">PRSpyLive is down / has been lost. Refreshing the page might help.</span>
+    </div>
+    <ul id="websocket-ping-text" class="websocket-ping-list hidden"></ul>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
+    <script>
+	    const tmpDoc = document.createElement('a');
+	    tmpDoc.href = window.location.href;
+        const timeOut = 3000;
+        const webSocketServerPort = 4000;
+        
+        const maxPingElements = 10;
+        const pingElements = [];
+
+        let timeoutObj = undefined;
+
+	    var ws = new WebSocket(`ws://${tmpDoc.hostname}:4000`);
+        ws.onopen = () => {
+            console.log('Websocket is connected.');
+        }
+
+        ws.onmessage = (ev) => {
+            let serv = JSON.parse(ev.data);
+            updateStatus(serv);
+        }
+
+        function updatePing() {
+            const pingLists = document.getElementById("websocket-ping-text");
+            pingLists.classList.remove("hidden");
+
+            const newElement = document.createElement('li');
+            newElement.textContent = 'Ping!';
+            newElement.setAttribute('class', 'websocket-ping-element');
+            pingLists.appendChild(newElement);
+            if (pingElements.length == maxPingElements) {
+                const element = pingElements.shift();
+                element.remove();
+            }
+            pingElements.push(newElement);
+        }
+
+        function updateStatus(serv) {
+            updatePing();
+
+            if (serv.finished) {
+                document.getElementById("warn-timedout").classList.remove("hidden");
+                document.getElementById("warn-timedout").innerText = "PRSpyLive Timed out.";
+                document.getElementById("timeout").innerText = "TIMED OUT!";
+                return;
+            }
+
+            if (timeoutObj !== undefined) {
+                clearTimeout(timeoutObj);
+            }
+
+            timeoutObj = setTimeout(() => {
+                document.getElementById("warn-timedout").classList.remove("hidden");
+                console.log('No response has been received from the web socket server for a while!');
+            }, timeOut);
+
+            let go = serv.go;
+            const waitColor = "#e03030";
+            const goColor = "#08b108";
+            const goEl = document.getElementById("go");
+            const waitEl = document.getElementById("wait");
+
+            if (go) {
+                waitEl.classList.add("hidden");
+                goEl.classList.remove("hidden");
+            } else {
+                goEl.classList.add("hidden");
+                waitEl.classList.remove("hidden");
+            }
+
+            document.getElementById("warn-timedout").classList.add("hidden");
+            
+            document.body.style.backgroundColor = go ? goColor : waitColor;
+            document.getElementById("name").innerText = serv.hostname;
+            document.getElementById("map").innerText = serv.map;
+            document.getElementById("players").innerText = serv.num_players;
+            document.getElementById("max").innerText = serv.max_players;
+            document.getElementById("timeout").innerText = moment.duration(serv.timeLeft).humanize(true);
+        };
+    </script>
+</body>
+
+</html>

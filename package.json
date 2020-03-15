@@ -1,0 +1,20 @@
+{
+  "name": "prspylive",
+  "version": "1.0.0",
+  "description": "Crush these server browser quick-tapping sons o butches",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon src/index.js prta",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^1.18.10"
+  },
+  "dependencies": {
+    "axios": "^0.19.2",
+    "express": "^4.16.4",
+    "ws": "^6.2.0"
+  }
+}
