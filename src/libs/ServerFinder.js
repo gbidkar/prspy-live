@@ -3,7 +3,7 @@ const axios = require('axios');
 const { Server } = require('../module/Server.js');
 const defaultServers = require('../servers.js');
 
-const PRSPYCurrentServersURL = 'https://www.realitymod.com/prspy/json/serverdata.json';
+const PRSPYCurrentServersURL = 'https://servers.realitymod.com/api/ServerInfo';
 
 class ServerFinder {
     constructor() {}
@@ -25,7 +25,8 @@ class ServerFinder {
             const filteredServers = this.filterRealTimeServers(servers);
             return this.createRealTimeServerModules(filteredServers);
         } catch (e) {
-            console.log(`[ERROR] An exception occured while loading server list from PRSPY (${e.message})`);
+            console.log(`[ERROR] An exception occured while loading server list from PRSPY:`);
+            console.log(e);
             console.log(`[ERROR] Reverting to local server list (${defaultServers.length} servers found)`);
             return defaultServers.map(this.createServerModuleFromRealTimeObject);
         }
@@ -39,19 +40,20 @@ class ServerFinder {
                 'Accept': 'application/json'
             }
         });
-        return JSON.parse(res.data.trim()).Data;
+        return res.data.servers;
     }
 
     filterRealTimeServers(serversObject) {
-        return serversObject.filter(s => s.NumPlayers > 0);
+        return serversObject.filter(s => s.properties.numplayers > 0);
     }
 
     createRealTimeServerModules(serversObject) {
         return serversObject.map(this.createServerModuleFromRealTimeObject);
     }
 
-    createServerModuleFromRealTimeObject(server) {
-        return new Server(server.ServerName, server.IPAddress, server.QueryPort, server.MaxPlayers - server.ReservedSlots);
+    createServerModuleFromRealTimeObject(serverHeader) {
+        const { properties: server } = serverHeader;
+        return new Server(server.hostname, serverHeader.serverIp, serverHeader.queryPort, server.maxplayers - server.bf2_reservedslots);
     }
 }
 

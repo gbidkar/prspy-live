@@ -17,7 +17,7 @@ const app = express();
 
     const serversLoader = new ServerFinder();
 
-    const query = process.argv.slice(2)[0];
+    const query = process.argv.slice(2).join(' ');
     if (query === undefined) {
         throw new TypeError('Must provide a server name query!');
     }
